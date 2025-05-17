@@ -2,20 +2,22 @@
 
 > **Disclaimer**: This README was edited and restructured by an AI model to improve readability and organization. While the technical content remains accurate, the formatting and structure have been enhanced for better user experience.
 
-This guide will help you set up a WiFi adapter in WSL2 by building a custom kernel with USB/IP support and configuring USB device sharing between Windows and WSL2.
+This guide will help you set up a WiFi adapter in WSL2 by building the official Microsoft WSL2 kernel with USB/IP support enabled and configuring USB device sharing between Windows and WSL2.
 
 ## Table of Contents
 
-1. [Building Custom WSL2 Kernel](#building-custom-wsl2-kernel)
+1. [Building WSL2 Kernel with USB/IP Support](#building-wsl2-kernel-with-usbip-support)
 2. [Installing USB/IP Tools](#installing-usbip-tools)
 3. [Sharing USB Device with WSL2](#sharing-usb-device-with-wsl2)
 4. [Verifying Setup](#verifying-setup)
 5. [Installing WiFi Adapter Driver](#installing-wifi-adapter-driver)
 6. [Using WiFi Adapter](#using-wifi-adapter)
 
-## Building Custom WSL2 Kernel
+## Building WSL2 Kernel with USB/IP Support
 
 > **Reference**: For official Microsoft documentation on building the WSL2 kernel, visit [Microsoft Learn: WSL User MSFT Kernel v6](https://learn.microsoft.com/en-us/community/content/wsl-user-msft-kernel-v6)
+
+This section guides you through building the official Microsoft WSL2 kernel from source with USB/IP support enabled. We're using Microsoft's official kernel repository, not a custom or modified kernel.
 
 ### Step 1: Download the Kernel Source
 
@@ -23,7 +25,7 @@ You have two options:
 1. Download the kernel version you're currently using (run `uname -r` in WSL2)
 2. Download the latest kernel version (Recommended)
 
-To download the latest kernel (in WSL2):
+To download the latest kernel:
 > **Note**: It is recommended to run git within WSL2 filesystem, not in Windows. `/mnt/c/` is the Windows filesystem. `/home/` is the WSL2 filesystem.
 
 ```bash
@@ -35,7 +37,7 @@ cd ~/wifi
 git clone https://github.com/microsoft/WSL2-Linux-Kernel.git --depth=1
 ```
 
-> **Note**: If you need a specific kernel version, use (in WSL2):
+> **Note**: If you need a specific kernel version, use:
 > ```bash
 > git clone https://github.com/microsoft/WSL2-Linux-Kernel.git --depth=1 -b linux-msft-wsl-6.6.y
 > ```
@@ -43,14 +45,14 @@ git clone https://github.com/microsoft/WSL2-Linux-Kernel.git --depth=1
 
 ### Step 2: Install Build Dependencies
 
-Install the required packages (in WSL2):
+Install the required packages:
 ```bash
 sudo apt update && sudo apt upgrade && sudo apt install build-essential flex bison libssl-dev libelf-dev bc python3 pahole cpio
 ```
 
 ### Step 3: Build the Kernel
 
-Build the kernel (in WSL2):
+Build the kernel:
 ```bash
 # Navigate to the kernel directory
 cd WSL2-Linux-Kernel
@@ -67,7 +69,7 @@ cp arch/x86/boot/bzImage /mnt/c/Users/myusername/
 
 ### Step 4: Configure WSL2 to Use Custom Kernel
 
-#### In PowerShell (as Administrator):
+#### In PowerShell:
 
 1. Open the WSL2 configuration file:
    ```powershell
@@ -154,17 +156,17 @@ usbipd bind --hardware-id ehfc:0002
 Attach the device to WSL2:
 ```powershell
 # Attach the device to WSL2
-usbipd attach --hardware-id <VID:PID> --wsl
+usbipd attach --hardware-id <VID:PID> --wsl -a
 ```
 
 > **Note**: If you have multiple WSL distributions, you can specify which one to use:
 > ```powershell
-> usbipd attach --hardware-id <VID:PID> --wsl <distribution-name>
+> usbipd attach --hardware-id <VID:PID> --wsl <distribution-name> -a
 > ```
 
 Example:
 ```powershell
-usbipd attach --hardware-id ehfc:0002 --wsl
+usbipd attach --hardware-id ehfc:0002 --wsl -a
 ```
 
 ## Verifying Setup
@@ -231,17 +233,7 @@ If you see only "lo" and "eth0" interfaces, you need to install the WiFi adapter
 
 4. Physically detach and reattach the WiFi adapter to your USB port.
 
-#### In PowerShell (as Administrator):
-
-5. Attach the WiFi adapter to WSL2:
-   ```powershell
-   # Reattach the device to WSL2
-   usbipd attach --hardware-id <VID:PID> --wsl
-   ```
-
-#### In WSL2:
-
-6. Verify the driver is loaded:
+5. Verify if the WiFi adapter is now visible in WSL2:
    ```bash
    # Check network interfaces again
    ifconfig -a
@@ -251,6 +243,8 @@ If you see only "lo" and "eth0" interfaces, you need to install the WiFi adapter
 ## Using WiFi Adapter
 
 ### Setting Up Monitor Mode with aircrack-ng
+
+> **Important**: Make sure you have permission to perform wireless network scanning in your jurisdiction. Some activities might be illegal in certain regions.
 
 #### In WSL2:
 
@@ -273,4 +267,3 @@ If you see only "lo" and "eth0" interfaces, you need to install the WiFi adapter
    airodump-ng wlxREDACTED
    ```
 
-> **Important**: Make sure you have permission to perform wireless network scanning in your jurisdiction. Some activities might be illegal in certain regions.
