@@ -15,7 +15,7 @@
 
 > **Reference**: For official Microsoft documentation on building the WSL2 kernel, visit [Microsoft Learn: WSL User MSFT Kernel v6](https://learn.microsoft.com/en-us/community/content/wsl-user-msft-kernel-v6)
 
-Technically we only need to insatll modules and headers in order to install drivers, but since we are downloading the kernel source code, we might as well upgrade the kernel.
+Technically we only need to install modules and headers in order to install drivers, but since we are downloading the kernel source code, we might as well upgrade the kernel.
 
 ### Step 1: Download the Kernel Source
 
@@ -45,28 +45,45 @@ git clone https://github.com/microsoft/WSL2-Linux-Kernel.git --depth=1
 
 Install the required packages:
 ```bash
-sudo apt update && sudo apt upgrade && sudo apt install build-essential flex bison libssl-dev libelf-dev bc python3 pahole cpio
+sudo apt update && sudo apt upgrade && sudo apt install build-essential flex bison libssl-dev libelf-dev bc python3 pahole cpio linux-firmware
 ```
 
-### Step 3: Build the Kernel
+### Step 3: Build the Kernel & modules & firmware files
 
 Build the kernel:
 ```bash
 # Navigate to the kernel directory
 cd WSL2-Linux-Kernel
 
-# Build the kernel (this may take some time)
-make -j$(nproc) KCONFIG_CONFIG=Microsoft/config-wsl
+# Get the Kconfig snippet to enable USB WiFi dongles supported in kernel natively
+wget https://raw.githubusercontent.com/akulihin/wsl2-wifi-adapter-setup/refs/heads/main/wifi_dongles.config
 
-# Install kernel modules and headers
-# If you chose to download your current kernel, this is the only step you need
-sudo make modules_install headers_install
+# Make .config (based on Microsoft/config-wsl with USB WiFi dongles support)
+cp Microsoft/config-wsl .config
+./scripts/kconfig/merge_config.sh .config wifi_dongles.config
+
+# Build the kernel (this may take some time)
+make -j$(nproc) bzImage modules
+
+# Install kernel modules into temporary folder
+rm -rf "$PWD/modules"
+make INSTALL_MOD_PATH="$PWD/modules" modules_install
+
+# Copy all firmware files into temporary folder too
+cp -ax /lib/firmware/. "$PWD/modules/lib/modules/$(make -s kernelrelease)/firmware"
+
+# Create a VHDX containing the kernel modules & firmware files
+rm modules.vhdx
+sudo ./Microsoft/scripts/gen_modules_vhdx.sh "$PWD/modules" $(make -s kernelrelease) modules.vhdx
 
 # Copy the kernel image to Windows (replace 'myusername' with your Windows username)
 cp arch/x86/boot/bzImage /mnt/c/Users/myusername/
+
+# Copy the VHDX image to Windows (replace 'myusername' with your Windows username)
+cp modules.vhdx /mnt/c/Users/myusername/
 ```
 
-### Step 4: Configure WSL2 to Use Custom Kernel
+### Step 4: Configure WSL2 to Use Custom Kernel, Custom Modules and Custom Firmware path
 
 #### In PowerShell:
 
@@ -75,10 +92,12 @@ cp arch/x86/boot/bzImage /mnt/c/Users/myusername/
    notepad %USERPROFILE%\.wslconfig
    ```
 
-2. Add the following configuration (replace 'myusername' with your Windows username):
+2. Add the following configuration (replace 'myusername' with your Windows username, replace myKernelVersion with e.g. 6.6.87.1-akulihin-wsl2-usbwifi+):
    ```ini
    [wsl2]
    kernel=C:\\Users\\myusername\\bzImage
+   kernelModules=C:\\Users\\myusername\\modules.vhdx
+   kernelCommandLine = firmware_class.path=/usr/lib/modules/myKernelVersion/firmware
    ```
 
 3. Restart WSL2:
@@ -94,7 +113,7 @@ cp arch/x86/boot/bzImage /mnt/c/Users/myusername/
    ```
    Example output:
    ```
-   6.6.87.1-microsoft-standard-WSL2+
+   6.6.87.1-akulihin-wsl2-usbwifi+
    ```
 
 ## Installing USB/IP Tool
