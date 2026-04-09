@@ -1,6 +1,6 @@
 # WSL2 WiFi Adapter Setup Guide
 
-> **Disclaimer**: This README was edited and restructured by an AI model to improve readability and organization. While the technical content remains accurate, the formatting and structure have been enhanced for better user experience.
+> **AI Usage Disclaimer**: This README was edited and restructured by an AI model, I am not that good at markdown. Techical details are accurate and actual cli commands are NOT touched by AI. 
 
 ## Table of Contents
 
